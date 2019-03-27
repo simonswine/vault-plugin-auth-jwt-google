@@ -155,9 +155,14 @@ func (b *jwtAuthBackend) pathCallback(ctx context.Context, req *logical.Request,
 		return logical.ErrorResponse("error validating claims: %s", err.Error()), nil
 	}
 
-	alias, groupAliases, err := b.createIdentity(allClaims, role)
+	alias, groupAliases, err := b.createIdentity(ctx, config, allClaims, role)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
+	}
+
+	// validate group bounds
+	if err := validateGroups(role.BoundGroups, groupAliases); err != nil {
+		return logical.ErrorResponse(errwrap.Wrapf("error validating bounds groups: {{err}}", err).Error()), nil
 	}
 
 	tokenMetadata := map[string]string{"role": roleName}

@@ -82,6 +82,10 @@ TTL will be set to the value of this parameter.`,
 				Type:        framework.TypeMap,
 				Description: `Map of claims/values which must match for login`,
 			},
+			"bound_groups": {
+				Type:        framework.TypeCommaStringSlice,
+				Description: `Comma-separated list of groups that a user is required to be member to be able to login; user must be member of all specified groups`,
+			},
 			"claim_mappings": {
 				Type:        framework.TypeKVPairs,
 				Description: `Mappings of claims (key) that will be copied to a metadata field (value)`,
@@ -159,10 +163,15 @@ type jwtRole struct {
 	// a token will pick up the new value during its next renewal.
 	Period time.Duration `json:"period"`
 
+	// OfflineAccess is valid for OIDC only and will request refresh tokens
+	// from the OIDC provider to renew the JWT
+	OfflineAccess bool `json:"offline_access"`
+
 	// Role binding properties
 	BoundAudiences      []string                      `json:"bound_audiences"`
 	BoundSubject        string                        `json:"bound_subject"`
 	BoundClaims         map[string]interface{}        `json:"bound_claims"`
+	BoundGroups         []string                      `json:"bound_groups"`
 	ClaimMappings       map[string]string             `json:"claim_mappings"`
 	BoundCIDRs          []*sockaddr.SockAddrMarshaler `json:"bound_cidrs"`
 	UserClaim           string                        `json:"user_claim"`
@@ -241,6 +250,7 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 			"bound_subject":         role.BoundSubject,
 			"bound_cidrs":           role.BoundCIDRs,
 			"bound_claims":          role.BoundClaims,
+			"bound_groups":          role.BoundGroups,
 			"claim_mappings":        role.ClaimMappings,
 			"user_claim":            role.UserClaim,
 			"groups_claim":          role.GroupsClaim,
@@ -334,6 +344,10 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 
 	if boundAudiences, ok := data.GetOk("bound_audiences"); ok {
 		role.BoundAudiences = boundAudiences.([]string)
+	}
+
+	if boundGroups, ok := data.GetOk("bound_groups"); ok {
+		role.BoundGroups = boundGroups.([]string)
 	}
 
 	if boundSubject, ok := data.GetOk("bound_subject"); ok {

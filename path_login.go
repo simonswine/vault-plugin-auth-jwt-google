@@ -162,9 +162,14 @@ func (b *jwtAuthBackend) pathLogin(ctx context.Context, req *logical.Request, d 
 		return logical.ErrorResponse("error validating claims: %s", err.Error()), nil
 	}
 
-	alias, groupAliases, err := b.createIdentity(allClaims, role)
+	alias, groupAliases, err := b.createIdentity(ctx, config, allClaims, role)
 	if err != nil {
 		return logical.ErrorResponse(err.Error()), nil
+	}
+
+	// validate group bounds
+	if err := validateGroups(role.BoundGroups, groupAliases); err != nil {
+		return logical.ErrorResponse(errwrap.Wrapf("error validating bounds groups: {{err}}", err).Error()), nil
 	}
 
 	tokenMetadata := map[string]string{"role": roleName}
@@ -259,7 +264,7 @@ func (b *jwtAuthBackend) verifyOIDCToken(ctx context.Context, config *jwtConfig,
 
 // createIdentity creates an alias and set of groups aliases based on the role
 // definition and received claims.
-func (b *jwtAuthBackend) createIdentity(allClaims map[string]interface{}, role *jwtRole) (*logical.Alias, []*logical.Alias, error) {
+func (b *jwtAuthBackend) createIdentity(ctx context.Context, config *jwtConfig, allClaims map[string]interface{}, role *jwtRole) (*logical.Alias, []*logical.Alias, error) {
 	userClaimRaw, ok := allClaims[role.UserClaim]
 	if !ok {
 		return nil, nil, fmt.Errorf("claim %q not found in token", role.UserClaim)
@@ -281,31 +286,46 @@ func (b *jwtAuthBackend) createIdentity(allClaims map[string]interface{}, role *
 
 	var groupAliases []*logical.Alias
 
-	if role.GroupsClaim == "" {
-		return alias, groupAliases, nil
-	}
+	if role.GroupsClaim != "" {
+		// groups claim set
+		groupsClaimRaw := getClaim(b.Logger(), allClaims, role.GroupsClaim)
 
-	groupsClaimRaw := getClaim(b.Logger(), allClaims, role.GroupsClaim)
+		if groupsClaimRaw == nil {
+			return nil, nil, fmt.Errorf("%q claim not found in token", role.GroupsClaim)
+		}
+		groups, ok := groupsClaimRaw.([]interface{})
 
-	if groupsClaimRaw == nil {
-		return nil, nil, fmt.Errorf("%q claim not found in token", role.GroupsClaim)
-	}
-	groups, ok := groupsClaimRaw.([]interface{})
-
-	if !ok {
-		return nil, nil, fmt.Errorf("%q claim could not be converted to string list", role.GroupsClaim)
-	}
-	for _, groupRaw := range groups {
-		group, ok := groupRaw.(string)
 		if !ok {
-			return nil, nil, fmt.Errorf("value %v in groups claim could not be parsed as string", groupRaw)
+			return nil, nil, fmt.Errorf("%q claim could not be converted to string list", role.GroupsClaim)
 		}
-		if group == "" {
-			continue
+		for _, groupRaw := range groups {
+			group, ok := groupRaw.(string)
+			if !ok {
+				return nil, nil, fmt.Errorf("value %v in groups claim could not be parsed as string", groupRaw)
+			}
+			if group == "" {
+				continue
+			}
+			groupAliases = append(groupAliases, &logical.Alias{
+				Name: group,
+			})
 		}
-		groupAliases = append(groupAliases, &logical.Alias{
-			Name: group,
-		})
+		return alias, groupAliases, nil
+	} else if config.OIDCDiscoveryURL == "https://accounts.google.com" && config.GoogleDirectoryImpersonateUser != "" && config.GoogleDirectoryServiceAccountKey != "" {
+		// google directory lookup set
+		groups, err := googleGroupsPerUser(
+			ctx,
+			config,
+			userName,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error while retrieving google groups: %s", err)
+		}
+		for _, groupRaw := range groups {
+			groupAliases = append(groupAliases, &logical.Alias{
+				Name: groupRaw.Email,
+			})
+		}
 	}
 
 	return alias, groupAliases, nil

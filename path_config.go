@@ -55,6 +55,14 @@ func pathConfig(b *jwtAuthBackend) *framework.Path {
 				Type:        framework.TypeString,
 				Description: "The value against which to match the 'iss' claim in a JWT. Optional.",
 			},
+			"google_directory_impersonate_user": {
+				Type:        framework.TypeString,
+				Description: "Google Admin User to Impersonate for Directory Group lookups",
+			},
+			"google_directory_service_account_key": {
+				Type:        framework.TypeString,
+				Description: "Google Service Account for Directory Group lookups",
+			},
 		},
 
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -122,13 +130,14 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 
 	resp := &logical.Response{
 		Data: map[string]interface{}{
-			"oidc_discovery_url":     config.OIDCDiscoveryURL,
-			"oidc_discovery_ca_pem":  config.OIDCDiscoveryCAPEM,
-			"oidc_client_id":         config.OIDCClientID,
-			"default_role":           config.DefaultRole,
-			"jwt_validation_pubkeys": config.JWTValidationPubKeys,
-			"jwt_supported_algs":     config.JWTSupportedAlgs,
-			"bound_issuer":           config.BoundIssuer,
+			"oidc_discovery_url":                config.OIDCDiscoveryURL,
+			"oidc_discovery_ca_pem":             config.OIDCDiscoveryCAPEM,
+			"oidc_client_id":                    config.OIDCClientID,
+			"default_role":                      config.DefaultRole,
+			"jwt_validation_pubkeys":            config.JWTValidationPubKeys,
+			"jwt_supported_algs":                config.JWTSupportedAlgs,
+			"bound_issuer":                      config.BoundIssuer,
+			"google_directory_impersonate_user": config.GoogleDirectoryImpersonateUser,
 		},
 	}
 
@@ -137,14 +146,16 @@ func (b *jwtAuthBackend) pathConfigRead(ctx context.Context, req *logical.Reques
 
 func (b *jwtAuthBackend) pathConfigWrite(ctx context.Context, req *logical.Request, d *framework.FieldData) (*logical.Response, error) {
 	config := &jwtConfig{
-		OIDCDiscoveryURL:     d.Get("oidc_discovery_url").(string),
-		OIDCDiscoveryCAPEM:   d.Get("oidc_discovery_ca_pem").(string),
-		OIDCClientID:         d.Get("oidc_client_id").(string),
-		OIDCClientSecret:     d.Get("oidc_client_secret").(string),
-		DefaultRole:          d.Get("default_role").(string),
-		JWTValidationPubKeys: d.Get("jwt_validation_pubkeys").([]string),
-		JWTSupportedAlgs:     d.Get("jwt_supported_algs").([]string),
-		BoundIssuer:          d.Get("bound_issuer").(string),
+		OIDCDiscoveryURL:                 d.Get("oidc_discovery_url").(string),
+		OIDCDiscoveryCAPEM:               d.Get("oidc_discovery_ca_pem").(string),
+		OIDCClientID:                     d.Get("oidc_client_id").(string),
+		OIDCClientSecret:                 d.Get("oidc_client_secret").(string),
+		DefaultRole:                      d.Get("default_role").(string),
+		JWTValidationPubKeys:             d.Get("jwt_validation_pubkeys").([]string),
+		JWTSupportedAlgs:                 d.Get("jwt_supported_algs").([]string),
+		BoundIssuer:                      d.Get("bound_issuer").(string),
+		GoogleDirectoryImpersonateUser:   d.Get("google_directory_impersonate_user").(string),
+		GoogleDirectoryServiceAccountKey: d.Get("google_directory_service_account_key").(string),
 	}
 
 	// Run checks on values
@@ -235,6 +246,10 @@ type jwtConfig struct {
 	JWTSupportedAlgs     []string `json:"jwt_supported_algs"`
 	BoundIssuer          string   `json:"bound_issuer"`
 	DefaultRole          string   `json:"default_role"`
+
+	// Google specific directory group lookups
+	GoogleDirectoryServiceAccountKey string `json:"google_directory_service_account_key,omitempty"`
+	GoogleDirectoryImpersonateUser   string `json:"google_directory_impersonate_user,omitempty"`
 
 	ParsedJWTPubKeys []interface{} `json:"-"`
 }

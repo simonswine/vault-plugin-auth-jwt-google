@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:4d6f036ea3fe636bcb2e89850bcdc62a771354e157cd51b8b22a2de8562bf663"
+  name = "cloud.google.com/go"
+  packages = ["compute/metadata"]
+  pruneopts = "UT"
+  revision = "2fa99f4c25c422525316dcb1fd3d5b94e1944cfd"
+  version = "v0.37.1"
+
+[[projects]]
   digest = "1:c47f4964978e211c6e566596ec6246c329912ea92e9bb99c00798bb4564c5b09"
   name = "github.com/armon/go-radix"
   packages = ["."]
@@ -321,11 +329,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c664d4451770ebc9ab63d54bccb9e4f2c6106cde7e566ea02889930b836c7d4c"
+  digest = "1:1540fd815845f20e31cb95c3b6f7f0f0c8880c3d053845ba4a4a609539446bf6"
   name = "golang.org/x/oauth2"
   packages = [
     ".",
+    "google",
     "internal",
+    "jws",
+    "jwt",
   ]
   pruneopts = "UT"
   revision = "3e8b2be1363542a95c52ea0796d4a40dacfb5b95"
@@ -373,13 +384,30 @@
   revision = "85acf8d2951cb2a3bde7632f9ff273ef0379bcbd"
 
 [[projects]]
-  digest = "1:6f3bd49ddf2e104e52062774d797714371fac1b8bddfd8e124ce78e6b2264a10"
+  digest = "1:3e1bab61f3faf1633f5cfa73090001a24602855ee0a217bcdb74852b2d68b544"
+  name = "google.golang.org/api"
+  packages = [
+    "admin/directory/v1",
+    "gensupport",
+    "googleapi",
+    "googleapi/internal/uritemplates",
+    "oauth2/v2",
+  ]
+  pruneopts = "UT"
+  revision = "e742f5a8defa1f9f5d723dfa04c962e680dc33f0"
+  version = "v0.2.0"
+
+[[projects]]
+  digest = "1:fa026a5c59bd2df343ec4a3538e6288dcf4e2ec5281d743ae82c120affe6926a"
   name = "google.golang.org/appengine"
   packages = [
+    ".",
     "internal",
+    "internal/app_identity",
     "internal/base",
     "internal/datastore",
     "internal/log",
+    "internal/modules",
     "internal/remote_api",
     "internal/urlfetch",
     "urlfetch",
@@ -476,6 +504,9 @@
     "github.com/mitchellh/pointerstructure",
     "github.com/patrickmn/go-cache",
     "golang.org/x/oauth2",
+    "golang.org/x/oauth2/google",
+    "google.golang.org/api/admin/directory/v1",
+    "google.golang.org/api/oauth2/v2",
     "gopkg.in/square/go-jose.v2",
     "gopkg.in/square/go-jose.v2/jwt",
   ]

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/vault/helper/strutil"
+	"github.com/hashicorp/vault/logical"
 
 	log "github.com/hashicorp/go-hclog"
 	"github.com/mitchellh/pointerstructure"
@@ -99,6 +100,41 @@ func validateBoundClaims(logger log.Logger, boundClaims, allClaims map[string]in
 		if expValue != actValue {
 			return fmt.Errorf("claim %q does not match associated bound claim", claim)
 		}
+	}
+
+	return nil
+}
+
+// validateGroups checks whether all of the groups in BoundGroups are contained in the group aliases
+func validateGroups(boundGroups []string, groupAliases []*logical.Alias) error {
+	// no groups bound
+	if len(boundGroups) == 0 {
+		return nil
+	}
+
+	groupFound := make(map[string]bool)
+
+	// set groups
+	for _, group := range boundGroups {
+		groupFound[group] = false
+	}
+
+	// loop over aliases
+	for _, groupAlias := range groupAliases {
+		if _, ok := groupFound[groupAlias.Name]; ok {
+			groupFound[groupAlias.Name] = true
+		}
+	}
+
+	var groupsMissing []string
+	for key, value := range groupFound {
+		if !value {
+			groupsMissing = append(groupsMissing, key)
+		}
+	}
+
+	if len(groupsMissing) > 0 {
+		return fmt.Errorf("missing group membership for %s", strings.Join(groupsMissing, ", "))
 	}
 
 	return nil
