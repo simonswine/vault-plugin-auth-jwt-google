@@ -111,6 +111,10 @@ authenticate against this role`,
 				Type:        framework.TypeCommaStringSlice,
 				Description: `Comma-separated list of allowed values for redirect_uri`,
 			},
+			"offline_access": {
+				Type:        framework.TypeBool,
+				Description: `Should a refresh token be requested for OIDC`,
+			},
 		},
 		ExistenceCheck: b.pathRoleExistenceCheck,
 		Operations: map[logical.Operation]framework.OperationHandler{
@@ -255,6 +259,7 @@ func (b *jwtAuthBackend) pathRoleRead(ctx context.Context, req *logical.Request,
 			"user_claim":            role.UserClaim,
 			"groups_claim":          role.GroupsClaim,
 			"allowed_redirect_uris": role.AllowedRedirectURIs,
+			"offline_access":        role.OfflineAccess,
 		},
 	}
 
@@ -402,6 +407,15 @@ func (b *jwtAuthBackend) pathRoleCreateUpdate(ctx context.Context, req *logical.
 
 	if allowedRedirectURIs, ok := data.GetOk("allowed_redirect_uris"); ok {
 		role.AllowedRedirectURIs = allowedRedirectURIs.([]string)
+	}
+
+	if offlineAccess, ok := data.GetOk("offline_access"); ok {
+		role.OfflineAccess = offlineAccess.(bool)
+	}
+
+	if role.RoleType != "oidc" && role.OfflineAccess {
+		return logical.ErrorResponse(
+			"'offline_access' cannot be set if 'role_type' is not 'oidc' or unspecified."), nil
 	}
 
 	if role.RoleType == "oidc" && len(role.AllowedRedirectURIs) == 0 {

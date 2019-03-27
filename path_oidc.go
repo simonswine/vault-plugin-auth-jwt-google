@@ -270,7 +270,15 @@ func (b *jwtAuthBackend) authURL(ctx context.Context, req *logical.Request, d *f
 		return resp, nil
 	}
 
-	resp.Data["auth_url"] = oauth2Config.AuthCodeURL(stateID, oidc.Nonce(nonce))
+	authCodeOpts := []oauth2.AuthCodeOption{
+		oidc.Nonce(nonce),
+	}
+
+	if role.OfflineAccess {
+		authCodeOpts = append(authCodeOpts, oauth2.AccessTypeOffline)
+	}
+
+	resp.Data["auth_url"] = oauth2Config.AuthCodeURL(stateID, authCodeOpts...)
 
 	return resp, nil
 }
